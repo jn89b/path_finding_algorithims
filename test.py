@@ -70,9 +70,9 @@ class Astar():
         self.start = start
         self.goal = goal
         print("goal is")
-        self.collision_bubble = 1.0
-        self.height_boundary = 5
-        self.ground_boundary = 1.0
+        self.collision_bubble = 5.0
+        self.height_boundary = 12
+        self.ground_boundary = 10.0
         
         self.obstacle_list = obs_list
 
@@ -113,11 +113,15 @@ class Astar():
     def main(self):
         ss = 1
         
-        move  =  [[-ss, 0, 0 ], # go forward
+        move  =  [[ss, 0, 0 ], # go forward
                   [ 0, -ss, 0], # go left
-                  [ ss, 0 , 0], # go backward
+                  [ -ss, 0 , 0], # go backward
                   [ 0, ss, 0 ], #go right
-                  [ 0, 0 , ss], #go up z  
+                  [ss, ss, 0 ], #go forward right
+                  [ss, -ss, 0], #go forward left
+                  [-ss, ss, 0 ], #go back right
+                  [-ss, -ss, 0], #go back left
+                  [ 0, 0 , ss], #go up z 
                   [ 0, 0 , -ss]] # go down z
         
         self.init_node()
@@ -127,8 +131,8 @@ class Astar():
         #while len(self.openset) > 0:
             count = count + 1
             #print(count)
-            if count >= 10000:
-                #print("iterations too much")
+            if count >= 5000:
+                print("iterations too much")
                 return self.closedset
             
             if self.openset.empty():
@@ -152,7 +156,7 @@ class Astar():
                 #print(current_node.position)
                 
                 node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1],  current_node.position[2] + new_position[2])
-                print(node_position)
+                #print(node_position)
                 # Make sure within range (check if within maze boundary)
                 if self.is_move_valid(node_position) == False:
                     #print("move is invalid")
@@ -175,13 +179,12 @@ class Astar():
                 
                 # put to possible paths
                 children.append(new_node)
-                
                 #penalty cost if we go down or up
-                if ((new_position == move[4]) or (new_position == move[5])):
-                    penalty = 1
+                if ((new_position == move[8]) or (new_position == move[9])):
+                    penalty = 1.25
                     #print("penalty")
                 else:
-                    penalty = 0
+                    penalty = 1
                     
             #check each children 
             for child in children:
@@ -195,7 +198,7 @@ class Astar():
                 child.g = current_node.g + cost
                 #print("child.position", child.position)
                 child.h = compute_euclidean(child.position, self.end_node)
-                #print("heuristic", child.h)
+                print("heuristic", child.h)
                 child.f = child.g + (child.h *penalty)
                 
                 #add to open set
@@ -303,28 +306,28 @@ def return_other_uavs(uavs, uav_index):
     return copy
 
 if __name__ == '__main__':
-    grid_row = 10
-    grid_col = 10
-    grid_height = 10
+    grid_row = 50
+    grid_col = 50
+    grid_height = 25
     grid = generate_grid(grid_row, grid_col,grid_height)
     
     
-    static_obstacle_list = [(3,3)]
+    static_obstacle_list = [(40,0)]
     
     some_list = []
     for static_obstacle in static_obstacle_list:
         x = static_obstacle[0]
         y = static_obstacle[1]
-        for z in range(5):
+        for z in range(15):
             some_list.append((x,y,z))
     
     obstacle_list = some_list
     obstacle_list = add_obstacles(grid, obstacle_list)
     
-    landing_zones = [(8,2,5),(40,60,10), (60,45,10), (60,60,10)]
+    landing_zones = [(30,30,10),(40,60,10), (60,45,10), (60,60,10)]
     
     #uav0
-    uav_0 = UAV("uav0", [0,0,2], 0, landing_zones[0])    
+    uav_0 = UAV("uav0", [0,0,10], 0, landing_zones[0])    
     
     #uav 1
     #uav_1 = UAV("uav1", [15,0,15], 1, landing_zones[1])

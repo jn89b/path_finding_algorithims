@@ -109,9 +109,13 @@ class Astar():
         
     def main(self):
         step_size = 1
-        move  =  [[-step_size, 0 ], # go up
+        move  =  [[-step_size, 0 ], # go back
                   [ 0, -step_size], # go left
-                  [ step_size, 0 ], # go down
+                  [ step_size, 0 ], # go forward
+                  [ step_size, -step_size], # forward-left
+                  [ step_size, step_size ], # forward-right
+                  [ -step_size, -step_size], # back-left
+                  [ -step_size, step_size ], # back-right
                   [ 0, step_size]] # go right
         self.init_node()
         
@@ -290,9 +294,9 @@ if __name__ == '__main__':
     landing_zones = [(40,45), (40,60), (60,45), (60,60)]
     plot_landing_zones(landing_zones)
     
-    uav_0 = UAV("uav0", [1,1], 1,landing_zones[1])
-    uav_1 = UAV("uav1", [30,0], 2, landing_zones[2])
-    uav_2 = UAV("uav2", [15,0], 0, landing_zones[0])
+    uav_0 = UAV("uav0", [1,1], 2,landing_zones[2])
+    uav_1 = UAV("uav1", [30,0], 0, landing_zones[0])
+    uav_2 = UAV("uav2", [15,0], 1, landing_zones[1])
     
     uav_list = [uav_0, uav_1, uav_2]
     uav_loc = [uav_0.starting_position, uav_1.starting_position, uav_2.starting_position]
