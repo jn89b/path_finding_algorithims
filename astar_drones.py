@@ -176,8 +176,9 @@ class Astar():
                     continue 
                 
                 ## Heuristic costs calculated here, this is using eucledian distance
-                cost = 1
-                child.g = current_node.g + cost
+                cost = compute_euclidean(current_node.position, child)
+                print(cost)
+                child.g = current_node.g + 1
                 child.h = compute_euclidean(child.position, self.end_node)
                 child.f = child.g + child.h
                 
@@ -206,7 +207,7 @@ def add_obstacles(grid, obstacle_list):
 
 def compute_euclidean(position, goal):
     heuristic = (((position[0] - goal.position[0]) ** 2) + 
-                       ((position[1] - goal.position[1]) ** 2))        
+                       ((position[1] - goal.position[1]) ** 2))**(2)       
     
     return heuristic
     
@@ -283,7 +284,7 @@ def return_other_uavs(uavs, uav_index):
     copy.pop(uav_index)
     return copy
 
-if __name__ == '__main__':
+if __name__ == '__main__': 
     grid_row = 100 #y
     grid_col = 100 #x
     grid = generate_grid(grid_row, grid_col)
@@ -291,12 +292,12 @@ if __name__ == '__main__':
     obstacle_list = [(80,50), (20,40), (25,25)]
     obstacle_list = add_obstacles(grid, obstacle_list)
     
-    landing_zones = [(40,45), (40,60), (60,45), (60,60)]
+    landing_zones = [(45,45), (40,60), (60,45), (60,60)]
     plot_landing_zones(landing_zones)
     
-    uav_0 = UAV("uav0", [1,1], 2,landing_zones[2])
-    uav_1 = UAV("uav1", [30,0], 0, landing_zones[0])
-    uav_2 = UAV("uav2", [15,0], 1, landing_zones[1])
+    uav_0 = UAV("uav0", [1,1], 0,landing_zones[0])
+    uav_1 = UAV("uav1", [30,0], 1, landing_zones[1])
+    uav_2 = UAV("uav2", [15,0], 2, landing_zones[2])
     
     uav_list = [uav_0, uav_1, uav_2]
     uav_loc = [uav_0.starting_position, uav_1.starting_position, uav_2.starting_position]

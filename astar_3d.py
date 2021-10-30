@@ -13,7 +13,6 @@ from queue import PriorityQueue
 from scipy import spatial
 
 import numpy as np
-
 import collections
 import heapq
 import numpy as np 
@@ -69,10 +68,10 @@ class Astar():
         self.grid = grid
         self.start = start
         self.goal = goal
-        print("goal is")
-        self.collision_bubble = 1.0
-        self.height_boundary = 5
-        self.ground_boundary = 1.0
+        print("starting")
+        self.collision_bubble = 3.5
+        self.height_boundary = 20
+        self.ground_boundary = 5
         
         self.obstacle_list = obs_list
 
@@ -109,16 +108,29 @@ class Astar():
             node_position[2] > self.height_boundary or
             node_position[2] < self.ground_boundary ):
             return False
+    
+    def is_target_close(self, position, goal):
+        """check if we are close to target if so we remove the penalty heuristic for 
+        flying high or low"""
+        distance =  (((position[0] - goal.position[0]) ** 2) + 
+                           ((position[1] - goal.position[1]) ** 2) +
+                           ((position[2] - goal.position[2]) ** 2))**(1/2)
         
+        if distance <= 1.5:
+            return True
+    
     def main(self):
         ss = 1
-        
-        move  =  [[-ss, 0, 0 ], # go forward
+        move  =  [[ss, 0, 0 ], # go forward
                   [ 0, -ss, 0], # go left
-                  [ ss, 0 , 0], # go backward
+                  [ -ss, 0 , 0], # go backward
                   [ 0, ss, 0 ], #go right
-                  [ 0, 0 , ss], #go up z  
-                  [ 0, 0 , -ss]] # go down z
+                  [ss, ss, 0 ], #go forward right
+                  [ss, -ss, 0], #go forward left
+                  [-ss, ss, 0 ], #go back right
+                  [-ss, -ss, 0], #go back left
+                  [ 0, ss , ss], #go up z 
+                  [ 0, ss, -ss]] # go down z
         
         self.init_node()
         count = 0 
@@ -127,7 +139,7 @@ class Astar():
         #while len(self.openset) > 0:
             count = count + 1
             #print(count)
-            if count >= 10000:
+            if count >= 2000:
                 print("iterations too much")
                 return self.closedset
             
@@ -135,24 +147,25 @@ class Astar():
                 print("No more moves")
             
             #pop node off from priority queue and add into closedset
-            cost,current_node = self.openset.get()            
+            cost,current_node = self.openset.get()
             self.closedset[current_node.position] = current_node
-            
+               
             #check if we hit the goal 
             if current_node.position == self.end_node.position:
                 #print("Goal reached", current_node.position)
                 path = return_path(current_node, grid)
-                print("count", count)
+                print("success!", count)
                 return path
-            
+  
             #move generation
             children = []
             for new_position in move:
+
                 # Get node position
                 #print(current_node.position)
                 
                 node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1],  current_node.position[2] + new_position[2])
-                print(node_position)
+                #print(node_position)
                 # Make sure within range (check if within maze boundary)
                 if self.is_move_valid(node_position) == False:
                     #print("move is invalid")
@@ -175,31 +188,42 @@ class Astar():
                 
                 # put to possible paths
                 children.append(new_node)
-                
-                #penalty cost if we go down or up
-                if ((new_position == move[4]) or (new_position == move[5])):
-                    penalty = 1.25
-                    #print("penalty")
-                else:
-                    penalty = 0
                     
             #check each children 
             for child in children:
                 #check if children is already visited
                 if child.position in self.closedset:
                     #print("Exists", child.position)
-                    continue 
+                    continue
                 
-                ## Heuristic costs calculated here, this is using eucledian distance
-                cost = 1
-                child.g = current_node.g + cost
+                if abs(current_node.position[2] - child.position[2]) == 1:
+                    penalty = 1.25
+                    #print("penalty", penalty)
+                else:
+                    penalty = 1                                                 
+                
+                """Heuristic costs calculated here, this is using eucledian distance"""
                 #print("child.position", child.position)
-                child.h = compute_euclidean(child.position, self.end_node)
-                #print("heuristic", child.h)
-                child.f = child.g + (child.h *penalty)
+                if self.is_target_close(current_node.position, self.end_node):
+                    print("current_node", current_node.position)
+                    print("target is close", current_node.position)
+                    cost = compute_actual_euclidean(current_node.position, child)
+                    child.g = current_node.g + 1
+                    child.h = compute_actual_euclidean(child.position, self.end_node)
+                    dynamic_weight = 0.5
+                    child.f = child.g + (child.h *penalty*dynamic_weight)
+                    print(child.f)
+                else:
+                    cost = compute_euclidean(current_node.position, child)
+                    #print(current_node.g)
+                    child.g = current_node.g + 1
+                    dynamic_weight = 1.5
+                    child.h = compute_euclidean(child.position, self.end_node)
+                    child.f = child.g + (child.h *penalty*dynamic_weight)
+                #print(child.f)
                 
                 #add to open set
-                #print("putting in", child.position)
+                #print("putting in", child)
                 self.openset.put((child.f, child))
 
 
@@ -218,24 +242,30 @@ def add_obstacles(grid, obstacle_list):
     return obstacle_list
 
 def compute_euclidean(position, goal):
-
+    
     distance =  (((position[0] - goal.position[0]) ** 2) + 
-                       ((position[1] - goal.position[1]) ** 2) + 
-                        ((position[2] - goal.position[2]) ** 2))**(1/2)
+                       ((position[1] - goal.position[1]) ** 2) +
+                       ((position[2] - goal.position[2]) ** 2))**(1/2)
     
-    z = 1.0 * position[2]
-    heuristic = distance# + z
     
-    return heuristic
+    return distance
+
+def compute_actual_euclidean(position, goal):
+    distance =  (((position[0] - goal.position[0]) ** 2) + 
+                       ((position[1] - goal.position[1]) ** 2) +
+                       ((position[2] - goal.position[2]) ** 2))**(1/2)
+    
+    return distance
     
 #This function return the path of the search
-def return_path(current_node,grid):
+def return_path(current_node, grid):
     path = []
     no_rows = len(grid)
     no_columns = len(grid)
     # here we create the initialized result maze with -1 in every position
     result = [[-1 for i in range(no_columns)] for j in range(no_rows)]
     current = current_node
+    
     while current is not None:
         path.append(current.position)
         current = current.parent
@@ -257,12 +287,12 @@ need to plot:
     pathway trajectory
         
 """
-
-def plot_path(grid_row, grid_col,waypoint_list, obstacles, goal):
+#plot_path(grid_z, grid_x , grid_y, uav_0.path, obstacle_list, uav_0.goalpoint)
+def plot_path(grid_z, grid_x, grid_y, waypoint_list, obstacles, goal):
     fig = plt.figure()
     ax = plt.axes(projection='3d')
-    ax.set_xlim([-1, grid_col])
-    ax.set_ylim([-1, grid_row])
+    ax.set_xlim([-1, grid_x])
+    ax.set_ylim([-1, grid_y])
     ax.set_zlim([-1, 30])
 
     for obstacle in obstacles:
@@ -302,45 +332,60 @@ def return_other_uavs(uavs, uav_index):
     copy.pop(uav_index)
     return copy
 
+def get_open_set_vals(open_set):
+    open_list = []
+    for elem in list(open_set.queue):
+        cost,current_node = openset.get()
+        
+
 if __name__ == '__main__':
-    grid_row = 100
-    grid_col = 100
-    grid_height = 25
-    grid = generate_grid(grid_row, grid_col,grid_height)
+    grid_z = 50  # this is probably the z axis
+    grid_x = 50 # this is x
+    grid_y = 50 # this is y
+    grid = generate_grid(grid_z, grid_x,grid_y)
     
-    
-    static_obstacle_list = [(5,5)]
+    static_obstacle_list = [(20,10)]
     
     some_list = []
     for static_obstacle in static_obstacle_list:
         x = static_obstacle[0]
         y = static_obstacle[1]
-        for z in range(5):
+        for z in range(25):
             some_list.append((x,y,z))
     
     obstacle_list = some_list
     obstacle_list = add_obstacles(grid, obstacle_list)
     
-    landing_zones = [(10,2,5),(40,60,5), (60,45,10), (60,60,10)]
+    landing_zones = [(20, 20,8), (20,30,8), (30, 20, 8), (30, 30, 8)]
     
     #uav0
-    uav_0 = UAV("uav0", [0,0,5], 1, landing_zones[1])    
+    uav_0 = UAV("uav0", [5,0,12], 1, landing_zones[1])
+    uav_1 = UAV("uav1", [5,5,12], 2, landing_zones[2])
+    uav_2 = UAV("uav2", [0,5,12], 0, landing_zones[0])
+    uav_3 = UAV("uav3", [10,0,12], 3, landing_zones[3])          
     
-    #uav 1
-    #uav_1 = UAV("uav1", [15,0,15], 1, landing_zones[1])
+    uav_list = [uav_0, uav_1, uav_2, uav_3]
+    uav_loc = [uav_0.starting_position, uav_1.starting_position, uav_2.starting_position, uav_3.starting_position]
     
-    #uav_list = [uav_0, uav_1]
-    #uav_loc = [uav_0.starting_position, uav_1.starting_position]
-    uav_list = [uav_0]
-    uav_loc = [uav_0.starting_position]
     path_obst = []
     waypoint_dict={}
     
-    astar = Astar(grid, obstacle_list,  uav_0.starting_position, uav_0.goalpoint)
-    uav_0.path = astar.main()
-    plot_path(grid_row, grid_col,uav_0.path, obstacle_list, uav_0.goalpoint)
+
+    # astar = Astar(grid, obstacle_list,  uav_0.starting_position, uav_0.goalpoint)
+    # uav_0.path = astar.main()
+
+    # #plot_path(grid_z, grid_x, grid_y, waypoint_list, obstacles, goal):
+    # plot_path(grid_z, grid_x ,grid_y, uav_0.path, obstacle_list, uav_0.goalpoint)
     
-    """
+    # astar = Astar(grid, obstacle_list,  uav_1.starting_position, uav_1.goalpoint)
+    # uav_1.path = astar.main()
+
+    # #plot_path(grid_z, grid_x, grid_y, waypoint_list, obstacles, goal):
+    # plot_path(grid_z, grid_x ,grid_y, uav_1.path, obstacle_list, uav_1.goalpoint)
+        
+    
+    waypoint_dict = {}
+    path_obst = []
     for idx, uav in enumerate(uav_list):
         print(idx)
         if idx == 0:
@@ -353,15 +398,11 @@ if __name__ == '__main__':
             
         grid_copy = grid.copy()
         new_obstacle = add_obstacles(grid_copy, new_obstacle)
-        print("uav")
         astar = Astar(grid_copy, new_obstacle,  uav.starting_position, uav.goalpoint)
         uav.path = astar.main()
         waypoint_dict[uav.id] = uav.path
-        plot_path(grid_row, grid_col, uav.path, new_obstacle , uav.goalpoint) 
-    """
+        plot_path(grid_z, grid_x, grid_y, uav.path, new_obstacle , uav.goalpoint) 
 
-
-    
     
     
     
